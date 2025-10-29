@@ -56,11 +56,9 @@
                 <div id="message" style="text-align:center;margin-top:12px"></div>
             </form>
         </div>
-    </div>
+        </div>
 
-        </script>
-
-        <!-- Settings modal -->
+            <!-- Settings modal -->
         <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
@@ -91,18 +89,17 @@
             </div>
         </div>
 
-        <script>
-                window.FACEATTEND_CONFIG = {{ app_config | tojson }};
-        </script>
-        <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        // Registration page scoped JS (namespaced to avoid colliding with shared script.js)
+        (function(){
         let video = null;
         let stream = null;
         let photoTaken = false;
         let faceDetectionInterval = null;
         const faceStatusElement = document.getElementById('faceStatus');
 
-        // Initialize the camera feed
-        async function initCamera() {
+    // Initialize the camera feed
+    async function regInitCamera() {
             try {
                 video = document.getElementById('videoElement');
                 if (!video) {
@@ -178,8 +175,8 @@
             }
         }
 
-        // Start camera when page loads
-        document.addEventListener('DOMContentLoaded', initCamera);
+    // Start camera when page loads
+    document.addEventListener('DOMContentLoaded', regInitCamera);
 
         // Capture photo
         document.getElementById('captureBtn').addEventListener('click', function() {
@@ -271,16 +268,22 @@
             }
         });
 
-        // Cleanup when page is closed
-        window.onbeforeunload = () => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
-        };
-    </script>
-    <script>
-        window.FACEATTEND_CONFIG = {{ app_config | tojson }};
-    </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+                // Cleanup when page is closed
+                window.onbeforeunload = () => {
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                };
+            
+            // Expose a namespaced init if needed
+            window.regPage = window.regPage || {};
+            window.regPage.init = function(){ regInitCamera(); };
+            })();
+        </script>
+
+        <script>
+            window.FACEATTEND_CONFIG = {{ app_config | tojson }};
+        </script>
+        <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
