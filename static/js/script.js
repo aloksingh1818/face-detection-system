@@ -32,6 +32,8 @@ const speak = (text) => {
 
 // Mute state (persisted)
 let muted = localStorage.getItem('faceattend_muted') === '1';
+// Audio enabled flag (persisted via settings)
+let audioEnabled = true;
 function setMuted(v) {
     muted = !!v;
     localStorage.setItem('faceattend_muted', muted ? '1' : '0');
@@ -247,8 +249,8 @@ function handleRecognizedFaces(faces) {
                     const last = lastPlayed[sid] || 0;
 
                     if (now - last > SOUND_COOLDOWN_MS) {
-                        // Only play sound/speech if not muted
-                        if (!muted) {
+                        // Only play sound and speech if not muted and audio enabled in settings
+                        if (!muted && audioEnabled) {
                             if (!soundPlaying && attendanceSound.readyState >= 2) {
                                 try {
                                     attendanceSound.currentTime = 0;
@@ -272,7 +274,7 @@ function handleRecognizedFaces(faces) {
                             lastPlayed[sid] = now;
                             lastRecognitionTime = now;
                         } else {
-                            // muted: update visual state but do not play sound/speech
+                            // muted or audio disabled: update visual state but do not play sound/speech
                             lastRecognitionTime = now;
                         }
                     }
@@ -282,7 +284,7 @@ function handleRecognizedFaces(faces) {
                     const sid = face.student_id || name;
                     const last = lastPlayed[sid] || 0;
                     if (now - last > SOUND_COOLDOWN_MS) {
-                        if (!muted) {
+                        if (!muted && audioEnabled) {
                             if (!soundPlaying && loginSound.readyState >= 2) {
                                 try {
                                     loginSound.currentTime = 0;
@@ -296,7 +298,7 @@ function handleRecognizedFaces(faces) {
                             lastPlayed[sid] = now;
                             lastRecognitionTime = now;
                         } else {
-                            // muted: just set recognition time but don't play
+                            // muted or audio disabled: just set recognition time but don't play
                             lastRecognitionTime = now;
                         }
                     }
@@ -419,9 +421,11 @@ function showSettingsModal() {
     const rc = document.getElementById('setting_recognition_cooldown');
     const sc = document.getElementById('setting_sound_cooldown');
     const mf = document.getElementById('setting_min_consecutive');
+    const ae = document.getElementById('setting_audio_enabled');
     if (rc) rc.value = RECOGNITION_COOLDOWN_MS;
     if (sc) sc.value = SOUND_COOLDOWN_MS;
     if (mf) mf.value = (window.FACEATTEND_CONFIG && window.FACEATTEND_CONFIG.MIN_CONSECUTIVE_FRAMES) || (typeof window.FACEATTEND_CONFIG === 'object' && window.FACEATTEND_CONFIG.MIN_CONSECUTIVE_FRAMES) || 3;
+    if (ae) ae.checked = (typeof audioEnabled === 'boolean') ? audioEnabled : true;
     // show bootstrap modal
     try {
         const modalEl = document.getElementById('settingsModal');
@@ -442,6 +446,8 @@ function saveSettingsFromModal() {
     if (rc) settings.RECOGNITION_COOLDOWN_MS = parseInt(rc.value) || RECOGNITION_COOLDOWN_MS;
     if (sc) settings.SOUND_COOLDOWN_MS = parseInt(sc.value) || SOUND_COOLDOWN_MS;
     if (mf) settings.MIN_CONSECUTIVE_FRAMES = parseInt(mf.value) || (window.FACEATTEND_CONFIG && window.FACEATTEND_CONFIG.MIN_CONSECUTIVE_FRAMES) || 3;
+    const ae = document.getElementById('setting_audio_enabled');
+    if (ae) settings.AUDIO_ENABLED = !!ae.checked;
     // persist
     localStorage.setItem('faceattend_settings', JSON.stringify(settings));
     applyLocalSettings(settings);
@@ -482,5 +488,8 @@ function applyLocalSettings(s) {
         // store locally for UI hints
         window.FACEATTEND_LOCAL = window.FACEATTEND_LOCAL || {};
         window.FACEATTEND_LOCAL.MIN_CONSECUTIVE_FRAMES = s.MIN_CONSECUTIVE_FRAMES;
+    }
+    if (typeof s.AUDIO_ENABLED === 'boolean') {
+        audioEnabled = s.AUDIO_ENABLED;
     }
 }
