@@ -447,6 +447,21 @@ function saveSettingsFromModal() {
     applyLocalSettings(settings);
     // hide modal
     try { const m = bootstrap.Modal.getInstance(document.getElementById('settingsModal')); if (m) m.hide(); } catch(e){}
+    // show confirmation toast
+    try { showSettingsSavedToast('Settings saved'); } catch (e) { console.warn('Toast show failed', e); }
+}
+
+function showSettingsSavedToast(message) {
+    try {
+        const toastEl = document.getElementById('settingsToast');
+        if (!toastEl) return;
+        const body = toastEl.querySelector('.toast-body');
+        if (body) body.textContent = message;
+        const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2500 });
+        toast.show();
+    } catch (e) {
+        console.warn('Could not show settings toast', e);
+    }
 }
 
 function loadLocalSettings() {
