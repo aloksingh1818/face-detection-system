@@ -144,4 +144,20 @@ Please download and place the following files in the project root before running
 - shape_predictor_68_face_landmarks.dat
 - dlib_face_recognition_resnet_model_v1.dat
 
+
+Model downloads and Git LFS
+---------------------------------
+If you want to keep the model binaries in the repository, it's recommended to use Git LFS (Large File Storage).
+
+- To enable LFS locally:
+   - Install Git LFS: https://git-lfs.github.com/
+   - Run: `git lfs install`
+   - Track the model files: `git lfs track "*.dat"` (or the specific filenames)
+   - Commit the resulting `.gitattributes` and push the files (or upload the binaries via releases)
+
+- If you prefer not to store the models in Git, download the following files and place them in the repository root before running the app:
+   - shape_predictor_68_face_landmarks.dat — (download from the dlib model releases or your backup)
+   - dlib_face_recognition_resnet_model_v1.dat — (download from the dlib model releases or your backup)
+
+Replace the parenthetical notes above with the exact download URLs if you have them.
 You can obtain them from their original sources or move them from a local backup.
