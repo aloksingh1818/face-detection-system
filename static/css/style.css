@@ -163,3 +163,24 @@ input, textarea, select, .form-control {
     .last-seen .meta .info { display: none; }
     .last-seen .meta .name { font-size:14px }
 }
+
+/* Make Bootstrap modals readable in the dark theme */
+.modal-content {
+    background: linear-gradient(180deg, rgba(11,18,32,0.98), rgba(6,10,20,0.98));
+    border: 1px solid rgba(255,255,255,0.04);
+    color: #ffffff;
+}
+.modal-header, .modal-footer {
+    border-color: rgba(255,255,255,0.03);
+}
+.modal .modal-title { color: #ffffff; }
+.modal .form-label { color: #e6eef8; }
+.modal .small-muted { color: rgba(255,255,255,0.7); }
+.modal .form-control {
+    background: rgba(255,255,255,0.02);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.04);
+}
+.modal .form-control::placeholder { color: rgba(255,255,255,0.5); }
+.modal .btn.secondary { background: transparent; border-color: rgba(255,255,255,0.06); color: #fff }
+.btn-close { filter: invert(1) grayscale(1) brightness(2); }
