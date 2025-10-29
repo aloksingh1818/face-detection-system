@@ -62,6 +62,12 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Simple health endpoint to verify the service is up."""
+    return jsonify({'status': 'ok'}), 200
+
+
 @app.context_processor
 def inject_app_config():
     # Expose a small subset of tunable client/server thresholds to templates
