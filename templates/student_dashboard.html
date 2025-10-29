@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - FaceAttendAI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="text-center mb-4">
+            <h1>Student Dashboard</h1>
+            <p class="lead">Welcome, {{ student.name }}</p>
+        </header>
+
+        <nav class="mb-4">
+            <ul class="nav nav-pills justify-content-center">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('index') }}">Camera Feed</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="#">My Attendance</a>
+                </li>
+            </ul>
+        </nav>
+
+        <main>
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="stat-value">{{ total_hours }}</div>
+                    <div class="stat-label">Total Hours</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ avg_hours }}</div>
+                    <div class="stat-label">Average Hours/Day</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ attendance_history|length }}</div>
+                    <div class="stat-label">Total Sessions</div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <h3 class="mb-3">Attendance History</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Login Time</th>
+                            <th>Logout Time</th>
+                            <th>Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in attendance_history %}
+                        <tr>
+                            <td>{{ record.date }}</td>
+                            <td>{{ record.login_time.split('T')[1].split('+')[0] }}</td>
+                            <td>
+                                {% if record.logout_time %}
+                                    {{ record.logout_time.split('T')[1].split('+')[0] }}
+                                {% else %}
+                                    Active
+                                {% endif %}
+                            </td>
+                            <td>{{ record.duration }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
