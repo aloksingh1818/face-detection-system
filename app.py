@@ -1,4 +1,5 @@
 from flask import Flask, render_template, jsonify, request
+from flask_cors import CORS
 import traceback
 from config import Config
 import json
@@ -16,6 +17,9 @@ import os
 app = Flask(__name__)
 app.config.from_object(Config)
 Config.init_app(app)
+# Enable CORS for API endpoints so a separately-hosted frontend (e.g. GitHub Pages)
+# can call the backend on Render. Tighten origins in production if desired.
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Initialize services
 face_service = DlibFaceService()

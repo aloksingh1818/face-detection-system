@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FaceAttendAI - Attendance System (Static)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="static/css/style.css">
+    <meta name="robots" content="noindex">
+</head>
+<body>
+    <!-- This is a static copy of the app's main page suitable for GitHub Pages.
+         Before publishing, set window.API_BASE below to your Render backend URL,
+         e.g. https://your-app.onrender.com  -->
+
+    <div class="container">
+        <div class="app-header mb-4">
+            <div class="brand">
+                <div class="logo">FA</div>
+                <div>
+                    <h1>FaceAttendAI</h1>
+                    <p>Automated Face Recognition Attendance System</p>
+                </div>
+            </div>
+            <div>
+                <a class="btn secondary" href="admin_dashboard.html">Admin Dashboard</a>
+                <a class="btn" href="register_student.html">Register Student</a>
+                <button id="settingsButton" class="btn secondary" type="button">⚙ Settings</button>
+                <button id="muteButton" class="btn secondary" type="button">🔊 <span id="muteLabel">Mute</span></button>
+            </div>
+        </div>
+
+        <main>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="camera-container">
+                        <div class="video-wrapper">
+                            <video id="videoElement" autoplay playsinline class="responsive-video mtz-vlc-gpbcp"></video>
+                        </div>
+                        <div class="status-container mt-3">
+                            <p id="statusMessage" class="status-message">Initializing camera...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-container">
+                        <h5 style="margin-top:0">Last Seen</h5>
+                        <ul id="lastSeenList" class="last-seen">
+                            <li>No one seen yet.</li>
+                        </ul>
+                        <div class="mt-3 small-muted">Thumbnails show the last recognized faces. Click "Admin Dashboard" to view full attendance.</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080">
+        <div id="settingsToast" class="toast align-items-center text-white bg-dark border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">Settings saved</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // IMPORTANT: Replace the placeholder below with your Render backend URL after you deploy it.
+        // Example: window.API_BASE = 'https://your-app.onrender.com';
+        window.API_BASE = '';
+        // STATIC_BASE can remain empty if the static folder is at the repo root on Pages
+        window.STATIC_BASE = '';
+        // Default client-side config (server provides canonical settings during runtime).
+        window.FACEATTEND_CONFIG = { RECOGNITION_COOLDOWN_MS: 2000, SOUND_COOLDOWN_MS: 30000, MIN_CONSECUTIVE_FRAMES: 3 };
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="static/js/script.js"></script>
+</body>
+</html>
