@@ -5,99 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register New Student</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <style>
-        .camera-container {
-            margin: 20px 0;
-            text-align: center;
-        }
-        #videoElement {
-            width: 400px;
-            height: 300px;
-            border: 2px solid #ccc;
-            margin-bottom: 10px;
-        }
-        #capturedPhoto {
-            display: none;
-            width: 400px;
-            height: 300px;
-            border: 2px solid #ccc;
-            margin-bottom: 10px;
-        }
-        .camera-buttons {
-            margin: 10px 0;
-        }
-        .camera-buttons button {
-            margin: 0 5px;
-            padding: 8px 15px;
-        }
-        .guide-box {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 220px;
-            height: 300px;
-            border: 2px solid #00ff00;
-            border-radius: 10px;
-            pointer-events: none;
-        }
-        .guide-text {
-            margin: 10px 0;
-            padding: 10px;
-            background-color: #f0f0f0;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        #faceStatus {
-            margin: 10px 0;
-            padding: 10px;
-            border-radius: 5px;
-            display: none;
-        }
-        .status-good {
-            background-color: #dff0d8;
-            color: #3c763d;
-        }
-        .status-bad {
-            background-color: #f2dede;
-            color: #a94442;
-        }
-    </style>
 </head>
 <body>
     <div class="container">
-        <h1>Register New Student</h1>
-        <form id="registerForm">
-            <div class="form-group">
-                <label for="student_id">Student ID:</label>
-                <input type="text" id="student_id" name="student_id" required>
+        <div class="app-header mb-3">
+            <div class="brand">
+                <div class="logo">FA</div>
+                <div>
+                    <h1>Register New Student</h1>
+                    <p class="small-muted">Capture a clear photo for accurate recognition</p>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="name">Full Name:</label>
-                <input type="text" id="name" name="name" required>
+            <div>
+                <a class="btn secondary" href="{{ url_for('admin.admin_dashboard') }}">Back to Dashboard</a>
+                <button id="muteButton" class="btn secondary" type="button">🔊 <span id="muteLabel">Mute</span></button>
             </div>
-            <div class="camera-container">
-                <div style="position: relative; width: 400px; margin: 0 auto;">
+        </div>
+
+        <div class="form-container">
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="student_id">Student ID:</label>
+                    <input type="text" id="student_id" name="student_id" required>
+                </div>
+                <div class="form-group">
+                    <label for="name">Full Name:</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+
+                <div style="position:relative;max-width:480px;margin:14px auto;text-align:center">
                     <video id="videoElement" autoplay playsinline></video>
-                    <div class="guide-box"></div>
+                    <div class="guide-box" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:240px;height:300px;border-radius:10px;"></div>
                 </div>
-                <div class="guide-text">
-                    Please position your face within the green box:<br>
-                    ✓ Ensure good lighting<br>
-                    ✓ Look directly at the camera<br>
-                    ✓ Keep your face centered
+
+                <div class="small-muted" style="text-align:center;margin-bottom:8px">Please position your face within the box. Good lighting and a centered face help recognition.</div>
+
+                <div id="faceStatus" style="text-align:center;margin-bottom:12px;display:block"></div>
+                <canvas id="capturedPhoto" style="display:none"></canvas>
+
+                <div style="text-align:center;margin-bottom:8px">
+                    <button type="button" id="captureBtn" class="btn">Capture Photo</button>
+                    <button type="button" id="retakeBtn" class="btn" style="display:none;margin-left:10px">Retake Photo</button>
                 </div>
-                <div id="faceStatus"></div>
-                <canvas id="capturedPhoto" style="display: none;"></canvas>
-                <div class="camera-buttons">
-                    <button type="button" id="captureBtn">Capture Photo</button>
-                    <button type="button" id="retakeBtn" style="display: none;">Retake Photo</button>
+
+                <div style="text-align:center">
+                    <button type="submit" id="submitBtn" disabled class="btn">Register</button>
                 </div>
-            </div>
-            <button type="submit" id="submitBtn" disabled>Register</button>
-        </form>
-        <div id="message"></div>
-        <a href="{{ url_for('admin.admin_dashboard') }}" class="back-link">Back to Dashboard</a>
+
+                <div id="message" style="text-align:center;margin-top:12px"></div>
+            </form>
+        </div>
     </div>
 
     <script>
@@ -136,8 +93,8 @@
                 });
 
                 // Start periodic face detection
-                faceDetectionInterval = setInterval(checkFace, 1000);
-                
+                faceDetectionInterval = setInterval(checkFaceDetection, 1000);
+
                 console.log('Camera initialized successfully');
             } catch (err) {
                 console.error('Error accessing camera:', err);
@@ -147,42 +104,25 @@
             }
         }
 
-        // Check for face in the video feed
-        async function checkFace() {
-            if (!video || !video.srcObject || video.paused || video.ended || photoTaken) {
-                return;
-            }
+        // Periodically check for face in the video feed (uses a single, consistent method)
+        async function checkFaceDetection() {
+            const video = document.getElementById('videoElement');
+            if (!video || !video.srcObject || video.paused || video.ended || photoTaken) return;
+
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0);
+
+            const photoData = canvas.toDataURL('image/jpeg');
 
             try {
-                // Create canvas to capture video frame
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const ctx = canvas.getContext('2d');
-                
-                // Draw current video frame to canvas
-                ctx.drawImage(video, 0, 0);
-                
-                // Convert canvas to blob
-                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
-                
-                // Convert blob to base64
-                const base64 = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(blob);
-                });
-
-                // Send to server for face detection
                 const response = await fetch('/api/check-face', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        photo: base64
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ photo: photoData })
                 });
 
                 const result = await response.json();
@@ -194,60 +134,6 @@
                     faceStatusElement.textContent = '⚠ No face detected - Please adjust your position';
                     faceStatusElement.className = 'status-bad';
                     document.getElementById('captureBtn').disabled = true;
-                }
-                faceStatusElement.style.display = 'block';
-            } catch (error) {
-                console.error('Error checking face:', error);
-            }
-        }
-
-        // Initialize camera
-        async function startCamera() {
-            try {
-                const video = document.getElementById('videoElement');
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    }
-                });
-                video.srcObject = stream;
-                
-                // Start periodic face detection checks
-                faceDetectionInterval = setInterval(checkFaceDetection, 1000);
-            } catch (err) {
-                console.error('Error accessing camera:', err);
-                alert('Error accessing camera. Please ensure camera permissions are granted.');
-            }
-        }
-
-        async function checkFaceDetection() {
-            const video = document.getElementById('videoElement');
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0);
-            
-            const photoData = canvas.toDataURL('image/jpeg');
-            
-            try {
-                const response = await fetch('/api/check-face', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ photo: photoData })
-                });
-                
-                const result = await response.json();
-                if (result.face_detected) {
-                    faceStatusElement.textContent = '✓ Face detected - Good position for registration';
-                    faceStatusElement.className = 'status-good';
-                } else {
-                    faceStatusElement.textContent = '⚠ No face detected - Please adjust your position';
-                    faceStatusElement.className = 'status-bad';
                 }
                 faceStatusElement.style.display = 'block';
             } catch (error) {
@@ -355,5 +241,9 @@
             }
         };
     </script>
+    <script>
+        window.FACEATTEND_CONFIG = {{ app_config | tojson }};
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>

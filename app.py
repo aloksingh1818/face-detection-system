@@ -1,5 +1,7 @@
 from flask import Flask, render_template, jsonify, request
+import traceback
 from config import Config
+import json
 from routes.student_routes import student_bp
 from routes.admin_routes import admin_bp
 from services.dlib_face_service import DlibFaceService
@@ -9,6 +11,7 @@ import threading
 import time
 import numpy as np
 import base64
+import os
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -54,45 +57,103 @@ def index():
     """Main page with live camera feed"""
     return render_template('index.html')
 
+
+@app.context_processor
+def inject_app_config():
+    # Expose a small subset of tunable client/server thresholds to templates
+    cfg = {
+        'RECOGNITION_COOLDOWN_MS': Config.RECOGNITION_COOLDOWN_MS,
+        'SOUND_COOLDOWN_MS': Config.SOUND_COOLDOWN_MS,
+        'DISTANCE_MARGIN': Config.DISTANCE_MARGIN,
+        'COSINE_MARGIN': Config.COSINE_MARGIN,
+        'COSINE_THRESHOLD': Config.COSINE_THRESHOLD,
+        'TEMPLATE_THRESHOLD': Config.TEMPLATE_THRESHOLD,
+        'COSINE_DISTANCE_GUARD': Config.COSINE_DISTANCE_GUARD,
+        'MIN_CONSECUTIVE_FRAMES': Config.MIN_CONSECUTIVE_FRAMES
+    }
+    return dict(app_config=cfg)
+
 @app.route('/api/process-frame', methods=['POST'])
 def process_frame():
     """Process video frame for face recognition"""
     try:
         # Get frame data from request
-        frame_data = request.get_json()
+        # Use silent parsing so we don't raise on bad/missing Content-Type
+        frame_data = request.get_json(silent=True)
+        # Defensive logging for debugging intermittent 400s
+        try:
+            print("/api/process-frame received request. Keys:", list(frame_data.keys()) if frame_data else None)
+        except Exception:
+            print("/api/process-frame received request. Keys: Unable to list keys")
+
         if not frame_data or 'frame' not in frame_data:
-            raise ValueError("No frame data provided")
+            # Return a graceful non-HTTP-error response so the client won't see repeated 400s
+            print("/api/process-frame: no frame data provided or missing 'frame' key")
+            return jsonify({'success': False, 'error': 'No frame data provided', 'recognized_faces': []}), 200
+
+        raw_frame = frame_data['frame']
+        # Accept data URLs or raw base64
+        if isinstance(raw_frame, str) and ',' in raw_frame:
+            raw_frame = raw_frame.split(',')[1]
+
+        print(f"Received frame length: {len(raw_frame) if isinstance(raw_frame, str) else 'N/A'}")
 
         # Decode base64 frame
-        frame_bytes = base64.b64decode(frame_data['frame'])
+        try:
+            frame_bytes = base64.b64decode(raw_frame)
+        except Exception as be:
+            print(f"/api/process-frame: invalid base64 frame data: {str(be)}")
+            traceback.print_exc()
+            return jsonify({'success': False, 'error': f'Invalid base64 frame data: {str(be)}', 'recognized_faces': []}), 200
         nparr = np.frombuffer(frame_bytes, np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
         if frame is None:
-            raise ValueError("Could not decode frame")
+            print("/api/process-frame: could not decode frame")
+            return jsonify({'success': False, 'error': 'Could not decode frame', 'recognized_faces': []}), 200
         
         # Process frame
         recognized_faces = face_service.process_frame(frame)
-        
-            # Update attendance for recognized faces
+
+        # Update attendance for recognized faces
         attendance_info = []
         for face in recognized_faces:
             student_id = face['student_id']
             name = face['name']
             
             # Update last seen time
-            attendance_service.update_last_seen(student_id)
-            
-            # Mark login if not already logged in
-            attendance_marked = attendance_service.mark_login(student_id, name)
-            
+            # Record appearance: first appearance of the day is login_time; update logout_time to last appearance
+            attendance_service.record_appearance(student_id, name)
+
             # Get attendance details from today's records
             today_attendance = attendance_service.get_today_attendance(student_id)
             if today_attendance:
+                # Normalize legacy/new keys: attendance service stores 'login_time'/'logout_time'/'duration'
                 face['attendance_marked'] = True
-                face['first_timestamp'] = today_attendance['first_timestamp']
-                face['last_timestamp'] = today_attendance['last_timestamp']
-                face['work_hours'] = today_attendance['work_hours']
+                face['first_timestamp'] = today_attendance.get('first_timestamp') or today_attendance.get('login_time')
+                face['last_timestamp'] = today_attendance.get('last_timestamp') or today_attendance.get('logout_time')
+
+                # Normalize work hours: some records store a string like '1.23 hours'
+                duration_val = today_attendance.get('duration') or today_attendance.get('work_hours')
+                work_hours = 0.0
+                if isinstance(duration_val, str):
+                    try:
+                        work_hours = float(duration_val.split()[0])
+                    except Exception:
+                        work_hours = 0.0
+                elif isinstance(duration_val, (int, float)):
+                    work_hours = float(duration_val)
+
+                face['work_hours'] = work_hours
+            # include photo_url if provided by face service
+            try:
+                photo_path = face.get('photo_path')
+                if photo_path:
+                    from flask import url_for
+                    fname = os.path.basename(photo_path)
+                    face['photo_url'] = url_for('static', filename=f'images/student_photos/{fname}')
+            except Exception:
+                pass
             
             attendance_info.append(face)
         
@@ -101,10 +162,10 @@ def process_frame():
             'recognized_faces': attendance_info
         })
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 400
+        # Log full traceback for debugging but return 200 to avoid flooding client with 400s
+        print(f"Unexpected error in /api/process-frame: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e), 'recognized_faces': []}), 200
 
 def check_timeouts():
     """Background task to check for session timeouts"""

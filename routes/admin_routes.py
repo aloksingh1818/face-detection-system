@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, render_template, send_file
 from services.attendance_service import AttendanceService
 from services.dlib_face_service import DlibFaceService
+from utils.helpers import load_json
 import pandas as pd
 import os
 from datetime import datetime
@@ -20,7 +21,9 @@ face_service = DlibFaceService()
 def admin_dashboard():
     """Admin dashboard showing all attendance records"""
     attendance_records = attendance_service.get_all_attendance()
-    return render_template('admin_dashboard.html', attendance_records=attendance_records)
+    # Load registered students to display on dashboard
+    students = load_json(Config.STUDENTS_JSON)
+    return render_template('admin_dashboard.html', attendance_records=attendance_records, students=students)
 
 @admin_bp.route('/admin/register', methods=['GET', 'POST'])
 def register_student():

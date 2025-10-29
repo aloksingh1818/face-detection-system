@@ -19,16 +19,22 @@ class Config:
     SESSION_EXPIRY = timedelta(days=2)     # Close old session if new login after 2 days
     
     # Face Recognition Settings
-    FACE_RECOGNITION_TOLERANCE = 0.4  # Lower value = more strict matching (0.6 is default)
-    MIN_CONSECUTIVE_FRAMES = 3  # Number of consecutive frames needed for recognition
-    DEBUG_MODE = True  # Enable debug logging
-    # Face Recognition Settings
-    FACE_RECOGNITION_TOLERANCE = 0.6       # Lower is more strict (0.6 is default)
-    DEBUG_MODE = True                      # Enable debug logging
-    
-    # Face Recognition Settings
-    FACE_RECOGNITION_TOLERANCE = 0.6       # Lower is more strict
+    FACE_RECOGNITION_TOLERANCE = 0.5       # Lower is more strict (reduce false positives)
     MIN_FACE_SIZE = 20                     # Minimum face size in pixels
+    # Debugging toggle to enable verbose server logs
+    DEBUG_MODE = True
+    # Tunable thresholds (exposed to client via template)
+    RECOGNITION_COOLDOWN_MS = 800         # client: short cooldown after a recognition (ms) - reduced for snappier UX
+    SOUND_COOLDOWN_MS = 30 * 1000         # client: per-student sound cooldown (ms)
+    # Immediate acceptance thresholds: if match is very confident, accept immediately without waiting for consecutive frames
+    FACE_RECOGNITION_IMMEDIATE_DISTANCE = 0.35
+    FACE_RECOGNITION_IMMEDIATE_COSINE = 0.92
+    DISTANCE_MARGIN = 0.25                # server: require margin between best and second distance
+    COSINE_MARGIN = 0.12                  # server: require margin between best and second cosine
+    COSINE_THRESHOLD = 0.70               # server: minimal cosine to accept fallback
+    TEMPLATE_THRESHOLD = 0.65             # server: minimal template match score
+    COSINE_DISTANCE_GUARD = 0.90          # server: guard to avoid accepting cosine if distance too large
+    MIN_CONSECUTIVE_FRAMES = 4            # Number of consecutive frames required to confirm recognition
     
     # Time Zone Settings
     TIMEZONE = 'Asia/Kolkata'             # Default timezone for timestamps

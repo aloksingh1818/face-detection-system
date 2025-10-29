@@ -3,17 +3,61 @@ let video = null;
 let stream = null;
 let recognitionActive = false;
 let lastRecognitionTime = Date.now();
+// Prevent overlapping requests and rapid re-notifications
+// default fallbacks; will be overridden by server-provided `window.FACEATTEND_CONFIG` if present
+let RECOGNITION_COOLDOWN_MS = 2000; // 2s cooldown after a detection
+let processingFrame = false;          // true while a frame request is in-flight
+let recognitionCooldownUntil = 0;     // timestamp until which we skip captures
 
 // Sound effects
 const loginSound = new Audio('/static/sounds/login.mp3');
 const logoutSound = new Audio('/static/sounds/logout.mp3');
 const attendanceSound = new Audio('/static/sounds/attendance.mp3');
+// Per-student cooldown to avoid repeated audio
+let SOUND_COOLDOWN_MS = 30 * 1000; // 30 seconds (default; overridden by server config)
+const lastPlayed = {}; // map student_id -> timestamp
+// Single-sound gate to avoid overlapping/looped playback
+let soundPlaying = false;
+const markSoundPlaying = (audio) => {
+    soundPlaying = true;
+    const clear = () => { soundPlaying = false; audio.removeEventListener('ended', clear); };
+    audio.addEventListener('ended', clear);
+};
 
 // Speech synthesis for feedback
 const speak = (text) => {
     const utterance = new SpeechSynthesisUtterance(text);
     window.speechSynthesis.speak(utterance);
 };
+
+// Mute state (persisted)
+let muted = localStorage.getItem('faceattend_muted') === '1';
+function setMuted(v) {
+    muted = !!v;
+    localStorage.setItem('faceattend_muted', muted ? '1' : '0');
+    const label = document.getElementById('muteLabel');
+    if (label) label.textContent = muted ? 'Muted' : 'Mute';
+}
+document.addEventListener('DOMContentLoaded', () => {
+    // wire up mute button if present
+    const mb = document.getElementById('muteButton');
+    if (mb) {
+        setMuted(muted);
+        mb.addEventListener('click', () => setMuted(!muted));
+    }
+    // Bootstrap server-provided config if present
+    try {
+        if (window.FACEATTEND_CONFIG) {
+            const c = window.FACEATTEND_CONFIG;
+            if (typeof c.RECOGNITION_COOLDOWN_MS === 'number') RECOGNITION_COOLDOWN_MS = c.RECOGNITION_COOLDOWN_MS;
+            if (typeof c.SOUND_COOLDOWN_MS === 'number') SOUND_COOLDOWN_MS = c.SOUND_COOLDOWN_MS;
+            // other server-side tuning variables are consumed server-side; we keep client-focused ones
+            console.debug('FACEATTEND_CONFIG loaded', c);
+        }
+    } catch (e) {
+        console.warn('Failed to read FACEATTEND_CONFIG', e);
+    }
+});
 
 // Initialize the camera feed
 async function initCamera() {
@@ -58,12 +102,23 @@ function startFaceRecognition() {
 }
 
 // Process each video frame
+// Throttle frame uploads to ~4 FPS (250ms) to reduce load and improve responsiveness
 async function processVideoFrame() {
     if (!recognitionActive || !video) {
         requestAnimationFrame(processVideoFrame);
         return;
     }
-    
+    // Skip capture while in cooldown (recent recognition) or if request already in-flight
+    const nowTs = Date.now();
+    if (nowTs < recognitionCooldownUntil) {
+        setTimeout(processVideoFrame, 333);
+        return;
+    }
+    if (processingFrame) {
+        setTimeout(processVideoFrame, 333);
+        return;
+    }
+
     try {
         // Check if video is ready and has valid source
         if (!video.srcObject || !video.videoWidth || !video.videoHeight || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -77,7 +132,7 @@ async function processVideoFrame() {
             return;
         }
         
-        // Create canvas to capture video frame
+    // Create canvas to capture video frame
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -88,26 +143,32 @@ async function processVideoFrame() {
             ctx.drawImage(video, 0, 0);
             
             // Convert canvas to blob
-            const blob = await new Promise(resolve => {
-                canvas.toBlob(resolve, 'image/jpeg');
-            });
-            
-            // Send frame to server
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+
+            // Prevent another request until this one finishes
+            processingFrame = true;
+
+            // Send frame to server (throttled)
             const response = await fetch('/api/process-frame', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    frame: await blobToBase64(blob)
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ frame: await blobToBase64(blob) })
             });
-            
+
             const data = await response.json();
-            
-            if (data.success) {
-                handleRecognizedFaces(data.recognized_faces);
+
+            // If server processed the frame successfully, handle recognized faces.
+            // If server returned an error (success:false), treat it as "no faces detected"
+            if (data && data.success) {
+                handleRecognizedFaces(Array.isArray(data.recognized_faces) ? data.recognized_faces : []);
+            } else {
+                console.warn('Frame processing failed on server:', data && data.error);
+                // Normalize client behavior by sending an empty faces array to the handler
+                handleRecognizedFaces([]);
             }
+
+            // allow next request
+            processingFrame = false;
         } else {
             console.warn('Invalid video dimensions');
         }
@@ -116,8 +177,8 @@ async function processVideoFrame() {
         console.error('Error processing frame:', err);
     }
     
-    // Continue processing frames
-    requestAnimationFrame(processVideoFrame);
+    // Continue processing frames at ~4 FPS (250ms)
+    setTimeout(processVideoFrame, 250);
 }
 
 // Convert blob to base64
@@ -140,6 +201,11 @@ function handleRecognizedFaces(faces) {
     const now = Date.now();
     
     try {
+        // If any faces detected, set short cooldown to avoid immediate repeated snapshots/sounds
+        if (faces.length > 0) {
+            recognitionCooldownUntil = Date.now() + RECOGNITION_COOLDOWN_MS;
+        }
+
         // Update status for each recognized face
         faces.forEach(face => {
             if (!face || typeof face !== 'object') {
@@ -150,61 +216,168 @@ function handleRecognizedFaces(faces) {
             // Show welcome message instantly for each detected face
             const name = face.name || 'Unknown';
             let statusMessage = `Welcome ${name}!`;
+
+            // If a thumbnail is provided, update last-seen list immediately
+            if (face.photo_url) {
+                updateLastSeen({ student_id: face.student_id, name: name, photo_url: face.photo_url, first: face.first_timestamp, last: face.last_timestamp, hours: face.work_hours });
+            }
             
             // Always show the welcome message instantly
             showStatus(statusMessage, 'success');
             
-            // Only play sound and update detailed info if enough time has passed
-            if (now - lastRecognitionTime > 2000) {
+                // Only play sound and update detailed info if global throttle allows
+                if (now - lastRecognitionTime > 2000) {
                 
                 // Add timestamps and work hours if available
                 if (face.attendance_marked) {
                     const workHours = face.work_hours || 0;
                     const firstTime = formatTime(face.first_timestamp);
                     const lastTime = formatTime(face.last_timestamp);
-                    
+
+                    // Show the status immediately with details
                     statusMessage += `\nFirst detected: ${firstTime}`;
                     statusMessage += `\nLast detected: ${lastTime}`;
                     statusMessage += `\nWork hours: ${workHours.toFixed(2)} hours`;
-                    
+
                     showStatus(statusMessage, 'success');
-                    
-                    // Play attendance sound
-                    if (attendanceSound.readyState >= 2) {
-                        attendanceSound.play().catch(err => console.warn('Error playing sound:', err));
+
+                    // Play attendance sound (throttled by lastRecognitionTime)
+                    // Per-student cooldown: only play attendance sound/speech if not recently played
+                    const sid = face.student_id || name;
+                    const last = lastPlayed[sid] || 0;
+
+                    if (now - last > SOUND_COOLDOWN_MS) {
+                        // Only play sound/speech if not muted
+                        if (!muted) {
+                            if (!soundPlaying && attendanceSound.readyState >= 2) {
+                                try {
+                                    attendanceSound.currentTime = 0;
+                                    attendanceSound.loop = false;
+                                    attendanceSound.play().catch(err => console.warn('Error playing sound:', err));
+                                    markSoundPlaying(attendanceSound);
+                                } catch (e) {
+                                    console.warn('Error starting attendance sound:', e);
+                                }
+                            }
+
+                            // Voice feedback (also throttled globally)
+                            let speechMessage = `Hello ${name}, `;
+                            if (firstTime === lastTime) {
+                                speechMessage += `Welcome! Your first check-in time is ${firstTime}`;
+                            } else {
+                                speechMessage += `Your total work time is ${workHours.toFixed(1)} hours, from ${firstTime} to ${lastTime}`;
+                            }
+                            try { window.speechSynthesis.cancel(); } catch (e) {}
+                            speak(speechMessage);
+                            lastPlayed[sid] = now;
+                            lastRecognitionTime = now;
+                        } else {
+                            // muted: update visual state but do not play sound/speech
+                            lastRecognitionTime = now;
+                        }
                     }
-                    
-                    // Provide voice feedback
-                    let speechMessage = `Hello ${name}, `;
-                    if (firstTime === lastTime) {
-                        speechMessage += `Welcome! Your first check-in time is ${firstTime}`;
-                    } else {
-                        speechMessage += `Your total work time is ${workHours.toFixed(1)} hours, from ${firstTime} to ${lastTime}`;
-                    }
-                    speak(speechMessage);
                 } else {
                     showStatus(statusMessage, 'success');
-                    if (loginSound.readyState >= 2) {
-                        loginSound.play().catch(err => console.warn('Error playing sound:', err));
+                    // Per-student cooldown for login sound as well
+                    const sid = face.student_id || name;
+                    const last = lastPlayed[sid] || 0;
+                    if (now - last > SOUND_COOLDOWN_MS) {
+                        if (!muted) {
+                            if (!soundPlaying && loginSound.readyState >= 2) {
+                                try {
+                                    loginSound.currentTime = 0;
+                                    loginSound.loop = false;
+                                    loginSound.play().catch(err => console.warn('Error playing sound:', err));
+                                    markSoundPlaying(loginSound);
+                                } catch (e) {
+                                    console.warn('Error starting login sound:', e);
+                                }
+                            }
+                            lastPlayed[sid] = now;
+                            lastRecognitionTime = now;
+                        } else {
+                            // muted: just set recognition time but don't play
+                            lastRecognitionTime = now;
+                        }
                     }
                 }
                 lastRecognitionTime = now;
             }
         });
         
-        // Handle no face detected case
+        // Handle no face detected case — show visual only, do NOT play any sounds
         if (faces.length === 0) {
             // Show no face detected message after a brief delay
             if (now - lastRecognitionTime > 2000) {
                 showStatus('No face detected', 'error');
-                if (logoutSound.readyState >= 2) { // Check if sound is loaded
-                    logoutSound.play().catch(err => console.warn('Error playing sound:', err));
-                }
+                // Intentionally do not play logout or alarm sounds when no face is present
             }
         }
     } catch (err) {
         console.error('Error handling recognized faces:', err);
         showStatus('Error processing recognition results', 'error');
+    }
+}
+
+// Update the Last Seen list in the sidebar
+function updateLastSeen(entry) {
+    try {
+        const list = document.getElementById('lastSeenList');
+        if (!list) return;
+
+        // Create an item with thumbnail and text
+        const li = document.createElement('li');
+        li.className = 'd-flex align-items-center mb-2';
+
+        const img = document.createElement('img');
+        img.src = entry.photo_url;
+        img.alt = entry.name;
+        img.width = 48;
+        img.height = 48;
+        img.style.objectFit = 'cover';
+        img.className = 'rounded me-2';
+
+        const meta = document.createElement('div');
+        // Show a small sound icon if we have played a sound for this student recently (tooltip shows time)
+        let soundHtml = '';
+        try {
+            const sid = entry.student_id;
+            const lt = lastPlayed && lastPlayed[sid];
+            if (lt) {
+                const d = new Date(lt);
+                const title = `Last announcement: ${d.toLocaleTimeString()}`;
+                soundHtml = `<span class="sound-icon" title="${title}" style="margin-left:6px">🔊</span>`;
+            }
+        } catch (e) {
+            soundHtml = '';
+        }
+
+        meta.innerHTML = `<strong>${entry.name}</strong>${soundHtml}<br><small>${entry.first ? formatTime(entry.first) : ''} - ${entry.last ? formatTime(entry.last) : ''}</small>`;
+
+        li.appendChild(img);
+        li.appendChild(meta);
+
+        // If the list contains the placeholder 'No one seen yet.', remove it
+        if (list.children.length === 1 && list.children[0].textContent.trim().startsWith('No one seen yet')) {
+            list.removeChild(list.children[0]);
+        }
+
+        // Remove any existing entry for this student_id to avoid duplicates
+        try {
+            const existing = Array.from(list.children).find(c => c.dataset && c.dataset.sid === String(entry.student_id));
+            if (existing) {
+                list.removeChild(existing);
+            }
+        } catch (e) {}
+
+        // Attach student id for deduplication
+        li.dataset.sid = String(entry.student_id);
+
+        // Prepend and keep only last 3 entries
+        list.insertBefore(li, list.firstChild);
+        while (list.children.length > 3) list.removeChild(list.lastChild);
+    } catch (e) {
+        console.warn('Failed to update last seen list:', e);
     }
 }
 
