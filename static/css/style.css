@@ -124,3 +124,42 @@ input, textarea, select, .form-control {
 
 /* Make dropdown menus and navbars readable */
 .dropdown-menu, .navbar, .navbar-nav .nav-link { color: #ffffff !important; }
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+    .container { padding: 18px; }
+    .app-header { flex-direction: column; align-items: flex-start; gap:10px }
+    .app-header > div { width: 100%; display:flex; justify-content: flex-end; gap:8px }
+    .brand { gap:10px }
+    .brand .logo { width:48px; height:48px; font-size:16px }
+    .camera-container { max-width:100%; }
+    #videoElement { min-height:220px }
+    .form-container { max-width:100%; padding:14px }
+    .table-responsive { overflow-x:auto }
+}
+
+@media (max-width: 768px) {
+    .container { padding: 12px; }
+    .app-header { align-items:flex-start }
+    .app-header > div { justify-content: flex-start; flex-wrap:wrap }
+    .app-header .btn { padding:8px 10px; font-size:13px }
+    .brand h1 { font-size:18px }
+    #videoElement { border-radius:10px; min-height:180px }
+    .last-seen img { width:44px; height:44px }
+    .last-seen li { padding:6px }
+    .status-message { font-size:14px; padding:10px }
+}
+
+@media (max-width: 480px) {
+    .brand .logo { width:40px; height:40px; font-size:14px }
+    .brand h1 { font-size:16px }
+    .camera-container { margin: 0 0 12px 0 }
+    #videoElement { min-height:160px }
+    .app-header > div { width:100%; display:flex; gap:6px; justify-content:space-between }
+    .form-container { padding:10px }
+    button { padding:8px 10px; font-size:13px }
+    .last-seen .meta .info { font-size:11px }
+    /* On very small screens, show only name and sound icon for compactness */
+    .last-seen .meta .info { display: none; }
+    .last-seen .meta .name { font-size:14px }
+}

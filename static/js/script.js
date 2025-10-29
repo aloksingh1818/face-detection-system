@@ -406,4 +406,66 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         recognitionActive = false;
     };
+    // Wire settings button if present
+    const sb = document.getElementById('settingsButton');
+    if (sb) sb.addEventListener('click', showSettingsModal);
+    // Load persisted local settings (if any)
+    try { loadLocalSettings(); } catch (e) { console.warn('Failed loading local settings', e); }
 });
+
+// Settings modal helpers
+function showSettingsModal() {
+    // populate fields from current effective settings
+    const rc = document.getElementById('setting_recognition_cooldown');
+    const sc = document.getElementById('setting_sound_cooldown');
+    const mf = document.getElementById('setting_min_consecutive');
+    if (rc) rc.value = RECOGNITION_COOLDOWN_MS;
+    if (sc) sc.value = SOUND_COOLDOWN_MS;
+    if (mf) mf.value = (window.FACEATTEND_CONFIG && window.FACEATTEND_CONFIG.MIN_CONSECUTIVE_FRAMES) || (typeof window.FACEATTEND_CONFIG === 'object' && window.FACEATTEND_CONFIG.MIN_CONSECUTIVE_FRAMES) || 3;
+    // show bootstrap modal
+    try {
+        const modalEl = document.getElementById('settingsModal');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    } catch (e) {
+        // fallback: show inline
+        const modalEl = document.getElementById('settingsModal');
+        if (modalEl) modalEl.style.display = 'block';
+    }
+}
+
+function saveSettingsFromModal() {
+    const rc = document.getElementById('setting_recognition_cooldown');
+    const sc = document.getElementById('setting_sound_cooldown');
+    const mf = document.getElementById('setting_min_consecutive');
+    const settings = {};
+    if (rc) settings.RECOGNITION_COOLDOWN_MS = parseInt(rc.value) || RECOGNITION_COOLDOWN_MS;
+    if (sc) settings.SOUND_COOLDOWN_MS = parseInt(sc.value) || SOUND_COOLDOWN_MS;
+    if (mf) settings.MIN_CONSECUTIVE_FRAMES = parseInt(mf.value) || (window.FACEATTEND_CONFIG && window.FACEATTEND_CONFIG.MIN_CONSECUTIVE_FRAMES) || 3;
+    // persist
+    localStorage.setItem('faceattend_settings', JSON.stringify(settings));
+    applyLocalSettings(settings);
+    // hide modal
+    try { const m = bootstrap.Modal.getInstance(document.getElementById('settingsModal')); if (m) m.hide(); } catch(e){}
+}
+
+function loadLocalSettings() {
+    const raw = localStorage.getItem('faceattend_settings');
+    if (!raw) return;
+    try {
+        const s = JSON.parse(raw);
+        applyLocalSettings(s);
+    } catch (e) { console.warn('Invalid local settings', e); }
+}
+
+function applyLocalSettings(s) {
+    if (!s) return;
+    if (typeof s.RECOGNITION_COOLDOWN_MS === 'number') RECOGNITION_COOLDOWN_MS = s.RECOGNITION_COOLDOWN_MS;
+    if (typeof s.SOUND_COOLDOWN_MS === 'number') SOUND_COOLDOWN_MS = s.SOUND_COOLDOWN_MS;
+    // also apply MIN_CONSECUTIVE_FRAMES locally for client hinting; server still enforces canonical value
+    if (typeof s.MIN_CONSECUTIVE_FRAMES === 'number') {
+        // store locally for UI hints
+        window.FACEATTEND_LOCAL = window.FACEATTEND_LOCAL || {};
+        window.FACEATTEND_LOCAL.MIN_CONSECUTIVE_FRAMES = s.MIN_CONSECUTIVE_FRAMES;
+    }
+}
