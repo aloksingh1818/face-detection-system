@@ -30,6 +30,19 @@ RUN python -m pip install --upgrade pip setuptools wheel && \
 # Copy the rest of the source
 COPY . /app
 
+# Create models directory and download required dlib models and OpenCV cascade
+RUN apt-get update && apt-get install -y --no-install-recommends wget bzip2 ca-certificates && \
+    mkdir -p /app/models && \
+    cd /app/models && \
+    # Download shape predictor and face recognition model (compressed) and extract
+    wget -q https://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2 && \
+    bunzip2 -f shape_predictor_68_face_landmarks.dat.bz2 || true && \
+    wget -q https://dlib.net/files/dlib_face_recognition_resnet_model_v1.dat.bz2 && \
+    bunzip2 -f dlib_face_recognition_resnet_model_v1.dat.bz2 || true && \
+    # Download OpenCV haarcascade fallback
+    wget -q -O haarcascade_frontalface_default.xml https://raw.githubusercontent.com/opencv/opencv/master/data/haarcascades/haarcascade_frontalface_default.xml || true && \
+    rm -rf /var/lib/apt/lists/*
+
 EXPOSE 5000
 
 # Start with gunicorn; mamba image uses conda Python on PATH
