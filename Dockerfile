@@ -33,4 +33,5 @@ COPY . /app
 EXPOSE 5000
 
 # Start with gunicorn; mamba image uses conda Python on PATH
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:$PORT"]
+## Use sh -lc so environment variable expansion works (JSON array form doesn't expand $PORT)
+CMD ["sh", "-lc", "gunicorn app:app --bind 0.0.0.0:${PORT:-5000}"]
