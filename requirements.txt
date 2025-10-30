@@ -3,7 +3,8 @@ opencv-python==4.8.1.78
 dlib==19.24.2
 numpy==1.26.4
 python-dotenv==1.0.0
-pandas==2.1.1
+# pandas removed to avoid heavy native builds on Render; using stdlib csv instead
+# pandas==2.1.1
 Pillow==10.2.0
 Flask-Login==0.6.3
 Werkzeug==3.0.0

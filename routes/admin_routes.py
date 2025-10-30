@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request, render_template, send_file
 from services.attendance_service import AttendanceService
 from services.dlib_face_service import DlibFaceService
 from utils.helpers import load_json
-import pandas as pd
+import csv
 import os
 from datetime import datetime
 import tempfile
@@ -94,14 +94,22 @@ def export_attendance():
     """Export attendance records as CSV"""
     try:
         attendance_records = attendance_service.get_all_attendance()
-        
-        # Convert to pandas DataFrame
-        df = pd.DataFrame(attendance_records)
-        
+        # Write CSV using the standard library to avoid a pandas dependency
+        if not attendance_records:
+            # Ensure at least headers exist
+            headers = ['student_id', 'name', 'first_timestamp', 'last_timestamp', 'work_hours']
+        else:
+            # Use keys from the first record as headers
+            headers = list({k for r in attendance_records for k in r.keys()})
+
         # Create temporary file
-        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as temp_file:
-            df.to_csv(temp_file.name, index=False)
-            
+        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False, mode='w', newline='') as temp_file:
+            writer = csv.DictWriter(temp_file, fieldnames=headers)
+            writer.writeheader()
+            for rec in attendance_records:
+                # Normalize any non-serializable fields if necessary
+                writer.writerow({k: rec.get(k, '') for k in headers})
+
         return send_file(
             temp_file.name,
             mimetype='text/csv',
