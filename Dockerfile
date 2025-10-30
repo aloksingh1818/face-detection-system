@@ -12,8 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg-dev zlib1g-dev libpng-dev libtiff-dev libwebp-dev libopenjp2-7-dev \
     libfreetype6-dev liblcms2-dev libffi-dev libexpat1-dev tk-dev tcl-dev \
     libavcodec-dev libavformat-dev libswscale-dev libgstreamer1.0-dev \
-    libglib2.0-0 libsm6 libxrender1 libxext6 libgtk-3-dev libgl1-mesa-glx \
-    libatlas-base-dev libopenblas-dev liblapack-dev gfortran \
+    libglib2.0-0 libsm6 libxrender1 libxext6 libgtk-3-dev \
+    libopenblas-dev liblapack-dev gfortran \
     ninja-build libboost-all-dev pkg-config python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
