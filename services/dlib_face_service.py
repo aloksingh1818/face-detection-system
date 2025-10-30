@@ -23,20 +23,53 @@ class DlibFaceService:
 
         if self.dlib_available:
             try:
+                # Prefer model files from Config.MODEL_DIR if available
+                model_dir = getattr(Config, 'MODEL_DIR', os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'models'))
+                shape_path = os.path.join(model_dir, 'shape_predictor_68_face_landmarks.dat')
+                face_rec_path = os.path.join(model_dir, 'dlib_face_recognition_resnet_model_v1.dat')
+
+                if not os.path.exists(shape_path) or not os.path.exists(face_rec_path):
+                    raise FileNotFoundError(f"dlib model files missing in {model_dir}: shape_exists={os.path.exists(shape_path)} rec_exists={os.path.exists(face_rec_path)}")
+
+                if Config.DEBUG_MODE:
+                    print(f"Loading dlib models from: {model_dir}")
+
                 self.detector = dlib.get_frontal_face_detector()
-                self.shape_predictor = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
-                self.face_rec_model = dlib.face_recognition_model_v1('dlib_face_recognition_resnet_model_v1.dat')
+                self.shape_predictor = dlib.shape_predictor(shape_path)
+                self.face_rec_model = dlib.face_recognition_model_v1(face_rec_path)
             except Exception as e:
-                # If model files are missing or there's an error, fall back
+                # If model files are missing or there's an error, fall back to OpenCV cascade
                 if Config.DEBUG_MODE:
                     print(f"dlib models not available or failed to load: {e}")
                 self.dlib_available = False
-                self.detector = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+                # Use local cascade file (from models dir) as primary fallback
+                model_dir = getattr(Config, 'MODEL_DIR', os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'models'))
+                cascade_path = os.path.join(model_dir, 'haarcascade_frontalface_default.xml')
+                if not os.path.exists(cascade_path):
+                    # fallback to OpenCV package data if present
+                    cv2_data = getattr(cv2, 'data', None)
+                    if cv2_data:
+                        cascade_path = os.path.join(cv2_data, 'haarcascade_frontalface_default.xml')
+                    else:
+                        cascade_path = ''
+                if Config.DEBUG_MODE:
+                    print(f"Using cascade at: {cascade_path}")
+                self.detector = cv2.CascadeClassifier(cascade_path)
         else:
             # dlib not installed; use OpenCV cascade as a lightweight fallback
             if Config.DEBUG_MODE:
                 print("dlib not available — using OpenCV Haar cascade fallback for face detection")
-            self.detector = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+            model_dir = getattr(Config, 'MODEL_DIR', os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'models'))
+            cascade_path = os.path.join(model_dir, 'haarcascade_frontalface_default.xml')
+            if not os.path.exists(cascade_path):
+                cv2_data = getattr(cv2, 'data', None)
+                if cv2_data:
+                    cascade_path = os.path.join(cv2_data, 'haarcascade_frontalface_default.xml')
+                else:
+                    cascade_path = ''
+            if Config.DEBUG_MODE:
+                print(f"Using cascade at: {cascade_path}")
+            self.detector = cv2.CascadeClassifier(cascade_path)
 
         self.load_known_faces()
     
