@@ -1,8 +1,9 @@
 services:
   - type: web
     name: face-detection-system
-    env: python
-    pythonVersion: 3.12.17
+    env: docker
+    # When using Docker, Render will build the repository Dockerfile.
+    # We include a Dockerfile that pins Python 3.12 and installs required system libs.
     plan: starter
     region: oregon
     repo: https://github.com/aloksingh1818/face-detection-system
