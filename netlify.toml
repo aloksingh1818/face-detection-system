@@ -1,7 +1,3 @@
 [build]
-  # We're serving the static frontend from the docs/ folder
   publish = "docs"
-
-[dev]
-  # Optional: Local dev server settings if you use Netlify CLI
-  port = 8888
+  command = ""
