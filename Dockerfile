@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-bookworm
 
 # reduce interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
@@ -31,6 +31,9 @@ COPY requirements.txt /app/requirements.txt
 ENV MAKEFLAGS="-j2"
 
 RUN python -m pip install --upgrade pip setuptools wheel
+
+# Install a modern CMake via pip to avoid older system cmake causing dlib build failures
+RUN python -m pip install cmake
 
 # Install requirements (will build wheels where needed)
 RUN python -m pip install -r /app/requirements.txt
