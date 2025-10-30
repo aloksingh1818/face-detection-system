@@ -162,16 +162,40 @@ async function processVideoFrame() {
                 body: JSON.stringify({ frame: await blobToBase64(blob) })
             });
 
-            const data = await response.json();
+            // Defensive handling: server may return HTML (index page) or an error page
+            // which would cause response.json() to throw with Unexpected token '<'.
+            let data = null;
+            try {
+                if (!response.ok) {
+                    // Try to capture any textual body to aid debugging
+                    const txt = await response.text().catch(() => null);
+                    console.warn('Frame upload failed:', response.status, response.statusText, txt);
+                    handleRecognizedFaces([]);
+                } else {
+                    const ct = (response.headers.get('content-type') || '').toLowerCase();
+                    if (ct.includes('application/json')) {
+                        try {
+                            data = await response.json();
+                        } catch (je) {
+                            const raw = await response.text().catch(() => null);
+                            console.warn('Failed to parse JSON from /api/process-frame:', je, raw);
+                            handleRecognizedFaces([]);
+                        }
+                    } else {
+                        // Received non-JSON (likely HTML). Log and treat as no faces.
+                        const raw = await response.text().catch(() => null);
+                        console.warn('Unexpected content-type from /api/process-frame:', ct, raw);
+                        handleRecognizedFaces([]);
+                    }
+                }
+            } catch (err) {
+                console.error('Error handling server response for frame:', err);
+                handleRecognizedFaces([]);
+            }
 
-            // If server processed the frame successfully, handle recognized faces.
-            // If server returned an error (success:false), treat it as "no faces detected"
+            // If we have valid JSON with success:true, process faces
             if (data && data.success) {
                 handleRecognizedFaces(Array.isArray(data.recognized_faces) ? data.recognized_faces : []);
-            } else {
-                console.warn('Frame processing failed on server:', data && data.error);
-                // Normalize client behavior by sending an empty faces array to the handler
-                handleRecognizedFaces([]);
             }
 
             // allow next request

@@ -65,9 +65,11 @@
     </div>
 
     <script>
-        // IMPORTANT: Replace the placeholder below with your Render backend URL after you deploy it.
-        // Example: window.API_BASE = 'https://your-app.onrender.com';
-        window.API_BASE = '';
+    // IMPORTANT: Set the Render backend URL so the static frontend calls the correct API.
+    // This site is published on Netlify; point the API_BASE to your Render service.
+    // Example: window.API_BASE = 'https://your-app.onrender.com';
+    // Auto-set to the Render Docker deployment used during fixes.
+    window.API_BASE = 'https://face-detection-system-3.onrender.com';
         // STATIC_BASE can remain empty if the static folder is at the repo root on Pages
         window.STATIC_BASE = '';
         // Default client-side config (server provides canonical settings during runtime).
