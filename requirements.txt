@@ -1,7 +1,7 @@
 flask==3.0.0
 opencv-python==4.8.1.78
 dlib==19.24.2
-numpy==1.26.0
+numpy==1.26.4
 python-dotenv==1.0.0
 pandas==2.1.1
 Pillow==10.2.0
