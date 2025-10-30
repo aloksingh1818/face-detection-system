@@ -87,6 +87,50 @@
         </main>
     </div>
 
+    <!-- Settings modal (static copy for Netlify docs) -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="settingsModalLabel">Settings</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Recognition cooldown (ms)</label>
+                        <input id="setting_recognition_cooldown" type="number" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sound cooldown (ms)</label>
+                        <input id="setting_sound_cooldown" type="number" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Min consecutive frames (local hint)</label>
+                        <input id="setting_min_consecutive" type="number" class="form-control" />
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="setting_audio_enabled" checked>
+                        <label class="form-check-label" for="setting_audio_enabled">Enable audio announcements (welcome/attendance)</label>
+                    </div>
+                    <div class="mb-2 p-2 recommended-settings" style="background:rgba(255,255,255,0.02);border-radius:6px">
+                        <strong>Recommended (good balance)</strong>
+                        <ul class="small-muted" style="margin:6px 0 0 18px;padding:0">
+                            <li>Recognition cooldown: <strong>800 ms</strong> — responsive while avoiding duplicate detections.</li>
+                            <li>Sound cooldown: <strong>30000 ms (30 s)</strong> — prevents repeated audio announcements for the same student.</li>
+                            <li>Min consecutive frames: <strong>4</strong> — helps reduce false positives before confirming a match.</li>
+                        </ul>
+                    </div>
+                    <div class="small-muted">These settings are stored locally in your browser and override client-side behavior only. Server keeps canonical settings.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn" onclick="saveSettingsFromModal()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container for settings saved confirmation -->
     <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080">
         <div id="settingsToast" class="toast align-items-center text-white bg-dark border-0" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
