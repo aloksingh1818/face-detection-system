@@ -44,6 +44,9 @@ class Config:
         # Create required directories if they don't exist
         os.makedirs(Config.DATA_DIR, exist_ok=True)
         os.makedirs(Config.STUDENT_PHOTOS_DIR, exist_ok=True)
+        # Models directory for dlib / cascades
+        Config.MODEL_DIR = os.path.join(Config.BASE_DIR, 'models')
+        os.makedirs(Config.MODEL_DIR, exist_ok=True)
         
         # Initialize empty JSON files if they don't exist
         if not os.path.exists(Config.STUDENTS_JSON):
