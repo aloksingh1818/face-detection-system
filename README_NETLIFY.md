@@ -73,3 +73,26 @@ CORS(app, resources={r"/api/*": {"origins": "https://your-netlify-site.netlify.a
 If you want, I can:
 - Automate replacing `window.API_BASE` from a Netlify environment variable during build.
 - Add `admin_dashboard.html` and `register_student.html` static copies into `docs/` (they currently require server-side Jinja to work).
+
+Render deployment quick-fill (fields you can copy/paste)
+----------------------------------------------------
+If you'd rather fill the Render UI manually, here are the exact values to use when creating a new Web Service (choose Python, not Docker):
+
+- Name: face-detection-system
+- Environment / Language: Python
+- Branch: main
+- Region: Oregon (US West) (or your preferred region)
+- Root Directory: (leave blank)
+- Build Command: pip install -r requirements.txt
+- Start Command: gunicorn app:app --bind 0.0.0.0:$PORT
+- Instance type: Starter (or Standard/Pro depending on need; Starter is a good default)
+
+Environment variables (add these in the Render UI after creating the service):
+
+- SECRET_KEY: a secure random string (example: use `openssl rand -hex 32` locally and paste result)
+- FLASK_ENV: production
+- PYTHONUNBUFFERED: 1
+
+Health check (optional but recommended): /api/health
+
+Tip: If you prefer to create the service from a file, I added `render.yaml` to the repo (see `render.yaml`). Render can create services from this manifest and will use the same build/start commands and placeholder env vars.
