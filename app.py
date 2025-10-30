@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, redirect
 from flask_cors import CORS
 import traceback
 from config import Config
@@ -65,6 +65,13 @@ app.register_blueprint(admin_bp)
 @app.route('/')
 def index():
     """Main page with live camera feed"""
+    # If a separate static frontend is deployed (e.g. Netlify), set the
+    # FRONTEND_URL environment variable on the backend host to redirect
+    # root requests to the static site. This avoids confusion when users
+    # visit the backend URL expecting the Netlify-hosted UI.
+    frontend_url = os.environ.get('FRONTEND_URL')
+    if frontend_url:
+        return redirect(frontend_url)
     return render_template('index.html')
 
 
