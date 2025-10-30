@@ -1,4 +1,4 @@
-FROM mambaforge/mambaforge:latest
+FROM condaforge/mambaforge:latest
 
 # Use conda/mamba to install heavy native packages (dlib, opencv, numpy, pillow)
 # This avoids compiling dlib from source inside the Docker build and uses prebuilt conda-forge packages.
