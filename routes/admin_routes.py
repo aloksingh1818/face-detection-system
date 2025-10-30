@@ -132,3 +132,10 @@ def get_attendance():
         records = [r for r in records if r['student_id'] == student_id]
 
     return jsonify(records)
+
+
+@admin_bp.route('/api/students')
+def api_students():
+    """Return list of registered students as JSON (used by static admin UI)."""
+    students = load_json(Config.STUDENTS_JSON) or []
+    return jsonify(students)
