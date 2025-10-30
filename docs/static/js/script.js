@@ -415,6 +415,11 @@ function updateLastSeen(entry) {
 // Show status message
 function showStatus(message, type) {
     const statusElement = document.getElementById('statusMessage');
+    if (!statusElement) {
+        // If no status element exists on the page, log and return silently
+        console.debug('showStatus called but no #statusMessage element present:', message, type);
+        return;
+    }
     statusElement.textContent = message;
     statusElement.className = `status-message ${type}`;
 }
@@ -428,8 +433,11 @@ function formatTime(timestamp) {
 
 // Initialize everything when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    initCamera();
-    
+    // Initialize camera only on pages that have a video element
+    if (document.getElementById('videoElement')) {
+        initCamera();
+    }
+
     // Cleanup when page is closed
     window.onbeforeunload = () => {
         if (stream) {

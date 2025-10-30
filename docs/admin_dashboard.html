@@ -101,11 +101,20 @@
         if (typeof window.API_BASE === 'undefined') window.API_BASE = 'https://face-detection-system-3.onrender.com';
 
         async function fetchStudents() {
+            // Try API first; fall back to local docs data if API is not available
             try {
                 const res = await fetch(`${window.API_BASE}/api/students`);
-                if (!res.ok) return [];
-                return await res.json();
-            } catch (e) { console.warn('Failed to fetch students', e); return []; }
+                if (res.ok) return await res.json();
+                console.warn('/api/students returned', res.status);
+            } catch (e) {
+                console.warn('Failed to fetch students from API', e);
+            }
+            // Fallback to static data included in the docs bundle
+            try {
+                const r2 = await fetch('/data/students.json');
+                if (r2.ok) return await r2.json();
+            } catch (e) { console.warn('Failed to load local students.json', e); }
+            return [];
         }
 
         async function fetchAttendance(date='', student_id='') {
