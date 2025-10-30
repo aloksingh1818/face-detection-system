@@ -21,9 +21,9 @@ Config.init_app(app)
 # can call the backend on Render. Tighten origins in production if desired.
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# Initialize services
-face_service = DlibFaceService()
-attendance_service = AttendanceService()
+# Initialize services and attach to the Flask app so routes can access them via current_app
+app.face_service = DlibFaceService()
+app.attendance_service = AttendanceService()
 
 @app.route('/api/check-face', methods=['POST'])
 def check_face():
