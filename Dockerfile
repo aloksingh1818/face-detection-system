@@ -15,6 +15,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 libsm6 libxrender1 libxext6 libgtk-3-dev \
     libopenblas-dev liblapack-dev gfortran \
     ninja-build libboost-all-dev pkg-config python3-dev \
+    # dlib build / GUI and X11 related deps
+    libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxss-dev libxi-dev \
+    libxcomposite-dev libxdamage-dev libglu1-mesa-dev libgl1-mesa-dev mesa-common-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -23,6 +26,10 @@ WORKDIR /app
 COPY requirements.txt /app/requirements.txt
 
 # Ensure latest pip/setuptools/wheel so build isolation and metadata work reliably
+
+# Limit parallel jobs during native builds to reduce peak memory usage inside the builder
+ENV MAKEFLAGS="-j2"
+
 RUN python -m pip install --upgrade pip setuptools wheel
 
 # Install requirements (will build wheels where needed)
