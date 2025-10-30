@@ -65,7 +65,10 @@
         // Ensure API_BASE points to the Render backend (fallback)
         if (typeof window.API_BASE === 'undefined') window.API_BASE = 'https://face-detection-system-3.onrender.com';
         (function(){
-            const API_BASE = (typeof window !== 'undefined' && window.API_BASE) ? window.API_BASE.replace(/\/$/, '') : '';
+            // Use a local, scoped apiBase variable derived from window.API_BASE.
+            // Avoid declaring a top-level `API_BASE` const to prevent collisions
+            // with other scripts that may declare the same identifier.
+            const apiBase = (typeof window !== 'undefined' && window.API_BASE) ? window.API_BASE.replace(/\/$/, '') : '';
             let video = null;
             let stream = null;
             let photoTaken = false;
@@ -129,7 +132,7 @@
                 const photoData = canvas.toDataURL('image/jpeg');
 
                 try {
-                    const response = await fetch(`${API_BASE}/api/check-face`, {
+                    const response = await fetch(`${apiBase}/api/check-face`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ photo: photoData })
@@ -214,7 +217,7 @@
                     const photoData = canvas.toDataURL('image/jpeg');
                     
                     // Send data to server
-                    const response = await fetch(`${API_BASE}/admin/register`, {
+                    const response = await fetch(`${apiBase}/admin/register`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
