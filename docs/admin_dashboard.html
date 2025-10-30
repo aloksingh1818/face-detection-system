@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Dashboard - FaceAttendAI (Static)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="static/css/style.css?v=20251030.2">
+    <meta name="robots" content="noindex">
+</head>
+<body>
+    <div class="container">
+        <div class="app-header mb-4">
+            <div class="brand">
+                <div class="logo">FA</div>
+                <div>
+                    <h1>Admin Dashboard</h1>
+                    <p>Manage Students and View Attendance Records</p>
+                </div>
+            </div>
+            <div>
+                <a class="btn" href="/">Camera Feed</a>
+                <a class="btn" href="/register_student.html">Register Student</a>
+                <button id="settingsButton" class="btn secondary" type="button">⚙ Settings</button>
+                <button id="muteButton" class="btn secondary" type="button">🔊 <span id="muteLabel">Mute</span></button>
+            </div>
+        </div>
+
+        <main>
+            <div class="row mb-4">
+                <div class="col">
+                    <div class="form-container">
+                        <h5 style="margin-top:0">Filter Attendance</h5>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <input type="date" id="dateFilter" class="form-control">
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" id="studentFilter" class="form-control" placeholder="Student ID">
+                            </div>
+                            <div class="col-md-4">
+                                <button id="exportBtn" class="btn">Export to CSV</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="form-container">
+                        <h5 style="margin-top:0">Registered Students</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>ID</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="studentsTableBody">
+                                    <tr><td colspan="2">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="table-container">
+                        <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>Date</th>
+                            <th>Login</th>
+                            <th>Logout</th>
+                            <th>Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTable">
+                        <tr><td colspan="6">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080">
+        <div id="settingsToast" class="toast align-items-center text-white bg-dark border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">Settings saved</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Ensure API_BASE is available (set in index.html or fallback)
+        if (typeof window.API_BASE === 'undefined') window.API_BASE = 'https://face-detection-system-3.onrender.com';
+
+        async function fetchStudents() {
+            try {
+                const res = await fetch(`${window.API_BASE}/api/students`);
+                if (!res.ok) return [];
+                return await res.json();
+            } catch (e) { console.warn('Failed to fetch students', e); return []; }
+        }
+
+        async function fetchAttendance(date='', student_id='') {
+            try {
+                const q = new URLSearchParams();
+                if (date) q.set('date', date);
+                if (student_id) q.set('student_id', student_id);
+                const res = await fetch(`${window.API_BASE}/api/admin/attendance?${q.toString()}`);
+                if (!res.ok) return [];
+                return await res.json();
+            } catch (e) { console.warn('Failed to fetch attendance', e); return []; }
+        }
+
+        function renderStudents(list) {
+            const tbody = document.getElementById('studentsTableBody');
+            tbody.innerHTML = '';
+            if (!list || list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2">No registered students yet.</td></tr>';
+                return;
+            }
+            list.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td style="display:flex;gap:12px;align-items:center">${s.photo_url ? `<img src='${s.photo_url}' width='48' height='48' style='object-fit:cover;border-radius:8px;margin-right:8px'/>` : ''}<div><div style='font-weight:700;color:#e9f2ff'>${s.name}</div><div class='small-muted'>${s.student_id}</div></div></td><td>${s.student_id}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderAttendance(list) {
+            const tbody = document.getElementById('attendanceTable');
+            tbody.innerHTML = '';
+            if (!list || list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">No attendance records.</td></tr>';
+                return;
+            }
+            list.forEach(r => {
+                const tr = document.createElement('tr');
+                const login = r.login_time ? new Date(r.login_time).toLocaleTimeString() : '';
+                const logout = r.logout_time ? new Date(r.logout_time).toLocaleTimeString() : 'Active';
+                tr.innerHTML = `<td>${r.student_id}</td><td>${r.name}</td><td>${r.date || ''}</td><td>${login}</td><td>${logout}</td><td>${r.work_hours || ''}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function refreshAll() {
+            const students = await fetchStudents();
+            renderStudents(students);
+            const att = await fetchAttendance();
+            renderAttendance(att);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshAll();
+            document.getElementById('dateFilter').addEventListener('change', async (e) => {
+                const date = e.target.value;
+                const sid = document.getElementById('studentFilter').value;
+                const att = await fetchAttendance(date, sid);
+                renderAttendance(att);
+            });
+            document.getElementById('studentFilter').addEventListener('input', async (e) => {
+                const sid = e.target.value;
+                const date = document.getElementById('dateFilter').value;
+                const att = await fetchAttendance(date, sid);
+                renderAttendance(att);
+            });
+            document.getElementById('exportBtn').addEventListener('click', () => {
+                window.location.href = `${window.API_BASE}/admin/export-attendance`;
+            });
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="static/js/script.js?v=20251030.2"></script>
+</body>
+</html>
