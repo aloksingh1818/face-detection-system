@@ -10,14 +10,21 @@ let processingFrame = false;          // true while a frame request is in-flight
 let recognitionCooldownUntil = 0;     // timestamp until which we skip captures
 
 // Sound effects
-// Allow the frontend to be hosted separately from the API. Set `window.API_BASE` on the
-// page (e.g. `https://your-backend.onrender.com`) or leave empty to use same-origin.
-const API_BASE = (typeof window !== 'undefined' && window.API_BASE) ? window.API_BASE.replace(/\/$/, '') : '';
-// Static base: useful when the site is served from GitHub Pages (root) vs nested path
-const STATIC_BASE = (typeof window !== 'undefined' && window.STATIC_BASE) ? window.STATIC_BASE.replace(/\/$/, '') : '';
-const loginSound = new Audio(`${STATIC_BASE}/static/sounds/login.mp3`);
-const logoutSound = new Audio(`${STATIC_BASE}/static/sounds/logout.mp3`);
-const attendanceSound = new Audio(`${STATIC_BASE}/static/sounds/attendance.mp3`);
+// Helper to read the configured API base from the page without creating a global
+function getApiBase() {
+    if (typeof window === 'undefined') return '';
+    return (window.API_BASE || '').replace(/\/$/, '');
+}
+
+// Helper to read the static base (where static assets are hosted).
+function getStaticBase() {
+    if (typeof window === 'undefined') return '';
+    return (window.STATIC_BASE || '').replace(/\/$/, '');
+}
+
+const loginSound = new Audio((getStaticBase() || '') + '/static/sounds/login.mp3');
+const logoutSound = new Audio((getStaticBase() || '') + '/static/sounds/logout.mp3');
+const attendanceSound = new Audio((getStaticBase() || '') + '/static/sounds/attendance.mp3');
 // Per-student cooldown to avoid repeated audio
 let SOUND_COOLDOWN_MS = 30 * 1000; // 30 seconds (default; overridden by server config)
 const lastPlayed = {}; // map student_id -> timestamp
@@ -156,7 +163,7 @@ async function processVideoFrame() {
             processingFrame = true;
 
             // Send frame to server (throttled)
-            const response = await fetch(`${API_BASE}/api/process-frame`, {
+            const response = await fetch(`${getApiBase()}/api/process-frame`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ frame: await blobToBase64(blob) })

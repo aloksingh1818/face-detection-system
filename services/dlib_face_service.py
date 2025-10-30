@@ -47,10 +47,17 @@ class DlibFaceService:
                 cascade_path = os.path.join(model_dir, 'haarcascade_frontalface_default.xml')
                 if not os.path.exists(cascade_path):
                     # fallback to OpenCV package data if present
+                    # cv2.data can be a string path or a module with attribute `haarcascades`
+                    cascade_path = ''
                     cv2_data = getattr(cv2, 'data', None)
-                    if cv2_data:
-                        cascade_path = os.path.join(cv2_data, 'haarcascade_frontalface_default.xml')
-                    else:
+                    try:
+                        if isinstance(cv2_data, str):
+                            cascade_path = os.path.join(cv2_data, 'haarcascade_frontalface_default.xml')
+                        elif cv2_data and hasattr(cv2_data, 'haarcascades'):
+                            cascade_path = os.path.join(cv2_data.haarcascades, 'haarcascade_frontalface_default.xml')
+                        elif hasattr(cv2, 'data') and isinstance(getattr(cv2, 'data'), str):
+                            cascade_path = os.path.join(getattr(cv2, 'data'), 'haarcascade_frontalface_default.xml')
+                    except Exception:
                         cascade_path = ''
                 if Config.DEBUG_MODE:
                     print(f"Using cascade at: {cascade_path}")
@@ -62,10 +69,15 @@ class DlibFaceService:
             model_dir = getattr(Config, 'MODEL_DIR', os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'models'))
             cascade_path = os.path.join(model_dir, 'haarcascade_frontalface_default.xml')
             if not os.path.exists(cascade_path):
+                # cv2.data can be a string or module; prefer cv2.data.haarcascades when available
+                cascade_path = ''
                 cv2_data = getattr(cv2, 'data', None)
-                if cv2_data:
-                    cascade_path = os.path.join(cv2_data, 'haarcascade_frontalface_default.xml')
-                else:
+                try:
+                    if isinstance(cv2_data, str):
+                        cascade_path = os.path.join(cv2_data, 'haarcascade_frontalface_default.xml')
+                    elif cv2_data and hasattr(cv2_data, 'haarcascades'):
+                        cascade_path = os.path.join(cv2_data.haarcascades, 'haarcascade_frontalface_default.xml')
+                except Exception:
                     cascade_path = ''
             if Config.DEBUG_MODE:
                 print(f"Using cascade at: {cascade_path}")

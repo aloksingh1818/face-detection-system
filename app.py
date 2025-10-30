@@ -25,6 +25,12 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 app.face_service = DlibFaceService()
 app.attendance_service = AttendanceService()
 
+# Module-level convenience references so route handlers and background threads
+# can access the services without referencing `app.` repeatedly. This also
+# prevents NameError in background threads where the app context may not be
+# directly available.
+face_service = app.face_service
+attendance_service = app.attendance_service
 @app.route('/api/check-face', methods=['POST'])
 def check_face():
     try:
@@ -180,7 +186,11 @@ def process_frame():
 def check_timeouts():
     """Background task to check for session timeouts"""
     while True:
-        attendance_service.check_and_update_timeouts()
+        try:
+            attendance_service.check_and_update_timeouts()
+        except Exception as e:
+            # Log but keep the thread alive
+            print('Error in check_timeouts:', e)
         time.sleep(60)  # Check every minute
 
 if __name__ == '__main__':

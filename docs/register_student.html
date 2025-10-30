@@ -62,9 +62,10 @@
         </div>
 
     <script>
-        // Use window.API_BASE so static site posts to Render backend
-        const API_BASE = (typeof window !== 'undefined' && window.API_BASE) ? window.API_BASE.replace(/\/$/, '') : '';
+        // Ensure API_BASE points to the Render backend (fallback)
+        if (typeof window.API_BASE === 'undefined') window.API_BASE = 'https://face-detection-system-3.onrender.com';
         (function(){
+            const API_BASE = (typeof window !== 'undefined' && window.API_BASE) ? window.API_BASE.replace(/\/$/, '') : '';
             let video = null;
             let stream = null;
             let photoTaken = false;
