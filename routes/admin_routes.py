@@ -1,6 +1,4 @@
-from flask import Blueprint, jsonify, request, render_template, send_file
-from services.attendance_service import AttendanceService
-from services.dlib_face_service import DlibFaceService
+from flask import Blueprint, jsonify, request, render_template, send_file, current_app
 from utils.helpers import load_json
 import csv
 import os
@@ -14,16 +12,16 @@ import numpy as np
 import cv2
 
 admin_bp = Blueprint('admin', __name__)
-attendance_service = AttendanceService()
-face_service = DlibFaceService()
+
 
 @admin_bp.route('/admin/dashboard')
 def admin_dashboard():
     """Admin dashboard showing all attendance records"""
-    attendance_records = attendance_service.get_all_attendance()
+    attendance_records = current_app.attendance_service.get_all_attendance()
     # Load registered students to display on dashboard
     students = load_json(Config.STUDENTS_JSON)
     return render_template('admin_dashboard.html', attendance_records=attendance_records, students=students)
+
 
 @admin_bp.route('/admin/register', methods=['GET', 'POST'])
 def register_student():
@@ -35,65 +33,66 @@ def register_student():
                 data = request.get_json()
                 student_id = data['student_id']
                 name = data['name']
-                
+
                 # Convert base64 image to file
                 photo_data = data['photo'].split(',')[1] if ',' in data['photo'] else data['photo']
                 photo_bytes = base64.b64decode(photo_data)
-                
+
                 # Convert to PIL Image
                 image = Image.open(io.BytesIO(photo_bytes))
-                
+
                 # Convert PIL Image to OpenCV format
                 cv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-                
+
                 # Attempt to get face encoding first
-                face_encoding = face_service.get_face_encoding(cv_image)
-                
+                face_encoding = current_app.face_service.get_face_encoding(cv_image)
+
                 if face_encoding is None:
                     return jsonify({
-                        'success': False, 
+                        'success': False,
                         'message': 'No face detected in the image. Please ensure your face is clearly visible and well-lit.'
                     })
-                
+
                 # Save photo only if face is detected
                 photo_path = os.path.join(
                     Config.STUDENT_PHOTOS_DIR,
                     f"{student_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.jpg"
                 )
                 image.save(photo_path, 'JPEG')
-                
+
             else:
                 student_id = request.form['student_id']
                 name = request.form['name']
                 photo = request.files['photo']
-                
+
                 # Save photo
                 photo_path = os.path.join(
                     Config.STUDENT_PHOTOS_DIR,
                     f"{student_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.jpg"
                 )
                 photo.save(photo_path)
-            
+
             # Register student
-            if face_service.register_new_student(student_id, name, photo_path):
+            if current_app.face_service.register_new_student(student_id, name, photo_path):
                 return jsonify({'success': True, 'message': 'Student registered successfully'})
             else:
                 if os.path.exists(photo_path):
                     os.remove(photo_path)
                 return jsonify({'success': False, 'message': 'Failed to register student. Please try again with a clearer photo showing your face.'})
-                
+
         except Exception as e:
             if 'photo_path' in locals() and os.path.exists(photo_path):
                 os.remove(photo_path)
             return jsonify({'success': False, 'message': str(e)}), 400
-            
+
     return render_template('register_student.html')
+
 
 @admin_bp.route('/admin/export-attendance')
 def export_attendance():
     """Export attendance records as CSV"""
     try:
-        attendance_records = attendance_service.get_all_attendance()
+        attendance_records = current_app.attendance_service.get_all_attendance()
         # Write CSV using the standard library to avoid a pandas dependency
         if not attendance_records:
             # Ensure at least headers exist
@@ -116,19 +115,20 @@ def export_attendance():
             as_attachment=True,
             download_name=f'attendance_export_{datetime.now().strftime("%Y%m%d")}.csv'
         )
-        
+
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 400
+
 
 @admin_bp.route('/api/admin/attendance')
 def get_attendance():
     """API endpoint to get filtered attendance records"""
     date = request.args.get('date')
     student_id = request.args.get('student_id')
-    
-    records = attendance_service.get_all_attendance(date)
-    
+
+    records = current_app.attendance_service.get_all_attendance(date)
+
     if student_id:
         records = [r for r in records if r['student_id'] == student_id]
-        
+
     return jsonify(records)
