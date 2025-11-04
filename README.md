@@ -125,6 +125,70 @@ curl http://127.0.0.1:5000/api/health
 # expect: {"status":"ok"}
 ```
 
+## Running inside Visual Studio Code (copy/paste)
+
+These commands are intended to be pasted into VS Code's integrated terminal. Before you start, install the Microsoft Python extension and select the project virtual environment as the interpreter (Command Palette -> Python: Select Interpreter).
+
+Linux (VS Code integrated terminal - bash)
+```bash
+# Open project in VS Code (from outside):
+# code .
+
+# In the integrated terminal (bash):
+python -m venv venv
+source venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install -r requirements.txt
+
+# Optional: install system deps if you keep dlib
+sudo apt update && sudo apt install -y build-essential cmake python3-dev \
+   libopenblas-dev liblapack-dev libatlas-base-dev libboost-all-dev \
+   libx11-dev libgtk-3-dev libjpeg-dev zlib1g-dev pkg-config || true
+
+# Run the app
+python app.py
+```
+
+macOS (VS Code integrated terminal - zsh)
+```bash
+# Open project in VS Code
+# code .
+
+python -m venv venv
+source venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install -r requirements.txt
+
+# Optional: install build tools if using dlib
+brew install cmake boost pkg-config || true
+
+python app.py
+```
+
+Windows (VS Code integrated terminal - PowerShell)
+```powershell
+# Open project in VS Code
+# code .
+
+# In the integrated PowerShell terminal (run as normal user):
+python -m venv venv
+# Use PowerShell activation
+venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install -r requirements.txt
+
+# If building dlib on Windows you need Visual Studio Build Tools installed (C++ workload)
+# Run the app
+python app.py
+```
+
+Notes for VS Code users
+- Install the 'Python' extension (ms-python.python) and 'Pylance' for best experience.
+- After creating the `venv`, use the interpreter selector (bottom-right) to pick `./venv` so the debugger and integrated terminal use the same Python.
+- You can create a simple debugger configuration by going to Run -> Add Configuration... and selecting "Python: Module" or "Python: Flask" and setting `module` to `app` or the program to `app.py`.
+- If you are running in a remote / Codespace environment, camera access may not be available; test recognition using the admin UI upload flow.
+
+
 ## Registering a New Student
 
 1. Navigate to Admin Dashboard and click "Register Student"
