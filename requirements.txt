@@ -1,16 +1,26 @@
-Flask>=2.0
-Flask-Cors>=3.0
-gunicorn>=20.0
-flask==3.0.0
+###############################
+# Project Python dependencies
+###############################
+# Note: `dlib` and `face_recognition` require system build deps (cmake, build-essential, libatlas/BLAS/Boost, etc.)
+# If you can't / don't want to build dlib, remove `dlib` and `face_recognition` and the app will fall back to OpenCV Haar cascades.
+
+Flask==3.0.0
+Flask-Cors==4.0.0
+gunicorn==20.1.0
 opencv-python==4.8.1.78
-dlib==19.24.2
 numpy==1.26.4
 python-dotenv==1.0.0
-# pandas removed to avoid heavy native builds on Render; using stdlib csv instead
-# pandas==2.1.1
 Pillow==10.2.0
 Flask-Login==0.6.3
 Werkzeug==3.0.0
 pytz==2023.3.post1
-flask-cors==4.0.0
-gunicorn==20.1.0
+
+# Face recognition (depends on dlib). Keep if you have system build tooling and want dlib-based recognition
+dlib==19.24.2
+face_recognition==1.3.0
+
+# Optional: headless OpenCV for servers without GUI
+# opencv-python-headless==4.8.1.78
+
+# Testing / development (optional)
+# pytest
