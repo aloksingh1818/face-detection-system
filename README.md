@@ -38,16 +38,91 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## Running the Application
+## Quick start — copy / paste
 
-1. Start the application:
+These commands will get a fresh clone running on a typical Ubuntu/macOS machine. Copy-paste each block for your platform.
+
+Linux (Ubuntu / Debian)
 ```bash
+# clone
+git clone https://github.com/aloksingh1818/face-detection-system.git
+cd face-detection-system
+
+# (optional) install system packages required to build dlib and OpenCV native dependencies
+sudo apt update
+sudo apt install -y build-essential cmake python3-dev \
+   libopenblas-dev liblapack-dev libatlas-base-dev libboost-all-dev \
+   libx11-dev libgtk-3-dev libjpeg-dev zlib1g-dev pkg-config
+sudo apt install -y libglib2.0-0 libsm6 libxrender1 libxext6 || true
+
+# create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+
+# install Python dependencies
+python -m pip install -r requirements.txt
+
+# Download dlib models if you want full dlib-based recognition (optional)
+# Place them in the `models/` directory (create the folder if missing):
+# - shape_predictor_68_face_landmarks.dat
+# - dlib_face_recognition_resnet_model_v1.dat
+# If you don't want to build dlib, remove `dlib` and `face_recognition`
+# from requirements.txt and re-run pip install; the app will fall back to OpenCV.
+
+# run the app
 python app.py
 ```
 
-2. Open your web browser and navigate to:
+macOS (with Homebrew)
+```bash
+git clone https://github.com/aloksingh1818/face-detection-system.git
+cd face-detection-system
+
+# install build tools
+brew install cmake boost pkg-config
+xcode-select --install || true
+
+python -m venv venv
+source venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install -r requirements.txt
+
+# (optional) download dlib models into `models/`
+python app.py
+```
+
+Windows (developer tooling required)
+```powershell
+# Install Visual Studio Build Tools (C++), CMake, and add them to PATH.
+# Then from PowerShell:
+git clone https://github.com/aloksingh1818/face-detection-system.git
+cd face-detection-system
+python -m venv venv
+venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install -r requirements.txt
+python app.py
+```
+
+Notes about dlib and face_recognition
+- `dlib` and `face_recognition` require native build tools and can fail to install if CMake, compilers, or BLAS/LAPACK libraries are missing. If you hit build errors for `dlib`, either install the system packages above or remove `dlib` and `face_recognition` from `requirements.txt` to use the OpenCV fallback.
+
+Open the app
+
+After the server is running (the dev server listens on port 5000 by default), open:
+
 ```
 http://localhost:5000
+```
+
+Health check
+
+To confirm the backend is running:
+
+```bash
+curl http://127.0.0.1:5000/api/health
+# expect: {"status":"ok"}
 ```
 
 ## Registering a New Student
