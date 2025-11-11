@@ -397,7 +397,31 @@ function updateLastSeen(entry) {
 
 // Show status message
 function showStatus(message, type) {
-    const statusElement = document.getElementById('statusMessage');
+    let statusElement = document.getElementById('statusMessage');
+    // If the status element is missing (template changed or not present),
+    // create a minimal one so calls to showStatus don't throw.
+    if (!statusElement) {
+        console.warn('showStatus: statusMessage element not found - creating transient element.');
+        try {
+            statusElement = document.createElement('div');
+            statusElement.id = 'statusMessage';
+            // Keep styling minimal; templates can supply their own CSS class rules.
+            statusElement.style.position = 'fixed';
+            statusElement.style.bottom = '12px';
+            statusElement.style.left = '12px';
+            statusElement.style.padding = '8px 12px';
+            statusElement.style.zIndex = 9999;
+            statusElement.style.background = 'rgba(0,0,0,0.6)';
+            statusElement.style.color = '#fff';
+            statusElement.style.borderRadius = '6px';
+            document.body.appendChild(statusElement);
+        } catch (e) {
+            // If DOM is not available for some reason, just log and abort silently
+            console.warn('Unable to create statusMessage element:', e);
+            return;
+        }
+    }
+
     statusElement.textContent = message;
     statusElement.className = `status-message ${type}`;
 }
@@ -411,7 +435,13 @@ function formatTime(timestamp) {
 
 // Initialize everything when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    initCamera();
+    // Only initialize the camera on pages that include the video element
+    // (admin/dashboard and some other pages don't include the camera UI).
+    if (document.getElementById('videoElement')) {
+        initCamera();
+    } else {
+        console.debug('initCamera: videoElement not present on this page — skipping camera initialization.');
+    }
     
     // Cleanup when page is closed
     window.onbeforeunload = () => {

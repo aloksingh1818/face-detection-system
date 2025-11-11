@@ -5,7 +5,7 @@ from config import Config
 import json
 from routes.student_routes import student_bp
 from routes.admin_routes import admin_bp
-from services.dlib_face_service import DlibFaceService
+from services.face_recognition_service import FaceRecognitionService
 from services.attendance_service import AttendanceService
 import cv2
 import threading
@@ -22,7 +22,7 @@ Config.init_app(app)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Initialize services and attach to the Flask app so routes can access them via current_app
-app.face_service = DlibFaceService()
+app.face_service = FaceRecognitionService()
 app.attendance_service = AttendanceService()
 
 # Module-level convenience references so route handlers and background threads

@@ -71,19 +71,111 @@ class FaceRecognitionService:
                         })
         
         return recognized_faces
+
+    def get_face_encoding(self, cv_image):
+        """Return a single face encoding for a given OpenCV BGR image or None.
+
+        This helper mirrors the DlibFaceService.get_face_encoding contract used by
+        the admin registration endpoint and the /api/check-face endpoint.
+        The input is expected to be an OpenCV BGR image (as produced by cv2).
+        """
+        try:
+            # Convert BGR to RGB for face_recognition
+            rgb = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+
+            # Optionally resize a large image to speed up detection while keeping
+            # enough resolution for reliable face detection.
+            h, w = rgb.shape[:2]
+            if max(h, w) > 1600:
+                scale = 1600.0 / max(h, w)
+                rgb = cv2.resize(rgb, (int(w * scale), int(h * scale)))
+
+            # Try several strategies to improve detection on difficult images.
+            # 1) Default HOG detector on the original image
+            locations = face_recognition.face_locations(rgb)
+            encodings = face_recognition.face_encodings(rgb, locations)
+            if encodings:
+                return encodings[0]
+
+            # 2) Try simple contrast-limited adaptive histogram equalization (CLAHE)
+            try:
+                ycrcb = cv2.cvtColor(rgb, cv2.COLOR_RGB2YCrCb)
+                y, cr, cb = cv2.split(ycrcb)
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+                y2 = clahe.apply(y)
+                ycrcb2 = cv2.merge((y2, cr, cb))
+                rgb_clahe = cv2.cvtColor(ycrcb2, cv2.COLOR_YCrCb2RGB)
+                locations = face_recognition.face_locations(rgb_clahe)
+                encodings = face_recognition.face_encodings(rgb_clahe, locations)
+                if encodings:
+                    return encodings[0]
+            except Exception:
+                # Non-fatal; continue to other fallbacks
+                pass
+
+            # 3) Try upscaling the image progressively (helps small or low-res faces)
+            try:
+                h, w = rgb.shape[:2]
+                for scale in (1.25, 1.5, 2.0):
+                    nh = int(h * scale)
+                    nw = int(w * scale)
+                    rgb_up = cv2.resize(rgb, (nw, nh), interpolation=cv2.INTER_LINEAR)
+                    locations = face_recognition.face_locations(rgb_up)
+                    encodings = face_recognition.face_encodings(rgb_up, locations)
+                    if encodings:
+                        # Convert coordinates back to original scale if needed by caller
+                        return encodings[0]
+            except Exception:
+                pass
+
+            # 4) Try CNN model if dlib/face_recognition was built with it. This is
+            # slower but can detect faces missed by HOG. Wrapped in try/except
+            # because some installations may not include the CNN model files.
+            try:
+                locations = face_recognition.face_locations(rgb, model='cnn')
+                encodings = face_recognition.face_encodings(rgb, locations)
+                if encodings:
+                    return encodings[0]
+            except Exception:
+                pass
+
+            # 5) As a final fallback, try OpenCV's Haar cascade to get a bbox and
+            # compute an encoding from that region.
+            try:
+                cascade_path = os.path.join(Config.MODEL_DIR, 'haarcascade_frontalface_default.xml')
+                if os.path.exists(cascade_path):
+                    cascade = cv2.CascadeClassifier(cascade_path)
+                else:
+                    cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+                gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+                faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+                if len(faces) > 0:
+                    # Take first detected face region and compute encoding on the crop
+                    (x, y, w, h) = faces[0]
+                    crop = rgb[y:y+h, x:x+w]
+                    encs = face_recognition.face_encodings(crop)
+                    if encs:
+                        return encs[0]
+            except Exception:
+                pass
+
+            # Nothing found
+            return None
+        except Exception as e:
+            print('Error in get_face_encoding:', e)
+            return None
     
     def register_new_student(self, student_id, name, image_path):
         """Register a new student with their face encoding"""
         try:
-            # Load and encode the face
-            image = face_recognition.load_image_file(image_path)
-            face_encodings = face_recognition.face_encodings(image)
-            
-            if not face_encodings:
+            # Load image with OpenCV so we can reuse get_face_encoding fallback
+            cv_image = cv2.imread(image_path)
+            if cv_image is None:
+                raise ValueError('Could not load image')
+
+            encoding = self.get_face_encoding(cv_image)
+            if encoding is None:
                 raise ValueError("No face found in the image")
-            
-            # Get the first face encoding
-            encoding = face_encodings[0]
             
             # Load existing students
             students = load_json(Config.STUDENTS_JSON)

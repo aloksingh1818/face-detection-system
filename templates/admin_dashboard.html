@@ -65,7 +65,9 @@
                                                 {% if s.photo_url %}
                                                     <img src="{{ s.photo_url }}" alt="{{ s.name }}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.03)">
                                                 {% elif s.photo_path %}
-                                                    <img src="/{{ s.photo_path }}" alt="{{ s.name }}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.03)">
+                                                    {# photo_path may be an absolute filesystem path; derive filename and use url_for to build a proper static URL #}
+                                                    {% set _fname = s.photo_path.split('/')[-1] %}
+                                                    <img src="{{ url_for('static', filename='images/student_photos/' ~ _fname) }}" alt="{{ s.name }}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.03)">
                                                 {% else %}
                                                     <div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;color:var(--muted)">{{ s.name[0] if s.name }}</div>
                                                 {% endif %}
