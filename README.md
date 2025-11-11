@@ -108,6 +108,23 @@ python app.py
 Notes about dlib and face_recognition
 - `dlib` and `face_recognition` require native build tools and can fail to install if CMake, compilers, or BLAS/LAPACK libraries are missing. If you hit build errors for `dlib`, either install the system packages above or remove `dlib` and `face_recognition` from `requirements.txt` to use the OpenCV fallback.
 
+Developer / installation files
+- `requirements-dev.txt` — full development requirements including `dlib` and `face_recognition` (heavy). Recommended to install using conda (see below).
+- `requirements-no-dlib.txt` — lightweight requirements for quick testing; excludes `dlib` and `face_recognition` so pip install will not attempt heavy native builds.
+
+Conda-based quick install (recommended for dlib)
+```bash
+# Create a conda env with Python 3.10 and install prebuilt dlib/face_recognition from conda-forge
+conda create -n faceenv python=3.10 -y
+conda activate faceenv
+conda install -c conda-forge dlib face_recognition opencv numpy -y
+
+# Then install the rest of Python deps from requirements-dev.txt (if any remain)
+pip install -r requirements-dev.txt
+```
+
+If you prefer pip and your platform supports building native extensions, use `requirements-dev.txt` inside a venv but ensure system packages (CMake, compilers, BLAS/LAPACK, Boost) are installed first.
+
 Open the app
 
 After the server is running (the dev server listens on port 5000 by default), open:
