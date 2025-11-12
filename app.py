@@ -206,4 +206,11 @@ if __name__ == '__main__':
     timeout_thread.start()
     
     # Run the Flask application
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # When deployed to platforms like Render or Cloud Run, they provide
+    # the port in the PORT environment variable. Respect that here so
+    # `python app.py` and `gunicorn app:app` behave consistently.
+    port = int(os.environ.get('PORT', 5000))
+    debug_env = os.environ.get('FLASK_DEBUG', os.environ.get('DEBUG', '0'))
+    debug = str(debug_env).lower() in ('1', 'true', 'yes')
+
+    app.run(host='0.0.0.0', port=port, debug=debug)
