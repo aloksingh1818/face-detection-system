@@ -1,0 +1,20 @@
+# Render service manifest for the dlib-enabled container deployment
+# See: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web_service
+    name: face-detection-system-dlib
+    env: docker
+    plan: starter
+    repo: https://github.com/aloksingh1818/face-detection-system
+    branch: main
+    buildCommand: ''
+    startCommand: './scripts/start.sh'
+    envVars:
+      - key: FLASK_DEBUG
+        value: '0'
+      - key: PORT
+        value: '8080'
+      - key: FRONTEND_URL
+        value: 'https://<your-netlify-site>.netlify.app'
+    disk: 10

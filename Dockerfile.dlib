@@ -1,0 +1,36 @@
+FROM continuumio/miniconda3
+
+WORKDIR /app
+
+# Install system deps needed for OpenCV, bzip2 and general builds
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    wget \
+    bzip2 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy conda environment definition and create the env
+COPY environment.yml /app/environment.yml
+RUN conda env create -f /app/environment.yml && conda clean -afy
+
+# Make the conda env available
+ENV PATH /opt/conda/envs/faceenv/bin:$PATH
+
+# Copy application code
+COPY . /app
+
+# Ensure models directory exists
+RUN mkdir -p /app/models
+
+# Make the start script executable
+RUN chmod +x /app/scripts/start.sh
+
+EXPOSE 8080
+
+# Use the startup script which ensures model files are present then starts gunicorn
+CMD ["/app/scripts/start.sh"]

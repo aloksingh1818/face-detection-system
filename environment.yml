@@ -1,0 +1,18 @@
+name: faceenv
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - dlib
+  - face_recognition
+  - opencv
+  - numpy
+  - flask
+  - flask-cors
+  - gunicorn
+  - pillow
+  - python-dotenv
+  - setuptools
+  - pip:
+    - flask-login==0.6.3
